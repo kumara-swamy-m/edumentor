@@ -1,0 +1,26 @@
+# Secrets
+.env
+*.pem
+*.key
+application-local.properties
+
+# Build output
+target/
+build/
+*.class
+*.jar
+*.war
+
+# Node
+node_modules/
+frontend/dist/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Logs
+*.log
+logs/
