@@ -174,6 +174,19 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$[0].email").value("admin@example.com"))
                 .andExpect(jsonPath("$[0].password").doesNotExist());
     }
+    @Test
+    void adminCanGetUserByIdAndUnknownIdReturns404() throws Exception {
+        User admin = userRepository.save(User.builder().name("Admin").email("admin2@example.com")
+                .passwordHash(passwordEncoder.encode(PASSWORD)).role(Role.ADMIN).enabled(true).build());
+        String token = loginAndGetToken("admin2@example.com");
+
+        mockMvc.perform(get("/api/auth/admin/users/" + admin.getId()).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("admin2@example.com"));
+        mockMvc.perform(get("/api/auth/admin/users/999999").header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("USER_NOT_FOUND"));
+    }
 
     // ---------- helpers ----------
 

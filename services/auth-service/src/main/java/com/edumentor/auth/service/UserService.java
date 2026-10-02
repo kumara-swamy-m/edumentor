@@ -18,4 +18,11 @@ public class UserService {
     public List<UserResponse> listUsers() {
         return userRepository.findAll().stream().map(UserResponse::from).toList();
     }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUser(Long id) {
+        return userRepository.findById(id)
+                .map(UserResponse::from)
+                .orElseThrow(() -> new com.edumentor.auth.exception.UserNotFoundException("User not found"));
+    }
 }

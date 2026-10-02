@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 
@@ -27,5 +28,11 @@ public class AdminUserController {
     @Operation(summary = "List all users (ADMIN only)")
     public List<UserResponse> listUsers() {
         return userService.listUsers();
+    }
+    @GetMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get a user by id (ADMIN only)")
+    public UserResponse getUser(@PathVariable Long id) {
+        return userService.getUser(id);
     }
 }
