@@ -80,4 +80,8 @@ public class MockPaymentProvider implements PaymentProvider {
         // The mock has no remote state; completion only ever arrives through a signed webhook.
         return ProviderOutcome.PENDING;
     }
+    @Override
+    public void refund(String providerPaymentId, String idempotencyKey) {
+        // The mock holds no money; the refund is recorded by the service
+    }
 }

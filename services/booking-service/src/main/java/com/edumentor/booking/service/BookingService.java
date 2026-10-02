@@ -36,6 +36,7 @@ public class BookingService {
     private final MentorSlotRepository slotRepository;
     private final BookingRepository bookingRepository;
     private final MentorDirectory mentorDirectory;
+    private final BookingOutboxService outbox;
     private final TransactionTemplate transactionTemplate;
     private final BookingProperties properties;
     private final Clock clock;
@@ -99,7 +100,9 @@ public class BookingService {
         booking.setSessionEnd(slot.getEndTime());
         booking.setHoldExpiresAt(expiresAt);
         booking.setActiveSlotId(slot.getId());
-        return bookingRepository.saveAndFlush(booking);
+        Booking saved = bookingRepository.saveAndFlush(booking);
+        outbox.bookingCreated(saved);
+        return saved;
     }
 
     /** Frees a slot whose hold ran out before the scheduler got to it. Caller holds the slot lock. */
@@ -107,6 +110,7 @@ public class BookingService {
         bookingRepository.findByActiveSlotId(slot.getId()).ifPresent(existing -> {
             if (existing.getStatus() == BookingStatus.PENDING_PAYMENT) {
                 existing.closeAs(BookingStatus.EXPIRED, "Payment window expired");
+                outbox.bookingCancelled(existing);
                 log.info("Expired hold released inline: bookingId={}, slotId={}", existing.getId(), slot.getId());
             }
         });
@@ -159,7 +163,7 @@ public class BookingService {
         return BookingResponse.from(booking);
     }
 
-    // ---------- Saga hooks (called by the Kafka consumer in Phase 6) ----------
+    // ---------- Saga steps (called by PaymentEventHandler) ----------
 
     /**
      * Payment succeeded. Idempotent for the same payment id. A booking that is no longer
@@ -199,6 +203,33 @@ public class BookingService {
         closeAndRelease(locked, BookingStatus.CANCELLED, reason == null ? "Payment failed" : reason);
         log.info("Booking cancelled after payment failure: bookingId={}", bookingId);
         return BookingResponse.from(booking);
+    }
+
+    /** Asks payment-service (through an event) to refund a payment this booking cannot honour. */
+    @Transactional
+    public void rejectPayment(Long bookingId, Long paymentId, Long studentId, String reason) {
+        outbox.paymentRejected(bookingId, paymentId, studentId, reason);
+        log.warn("Payment rejected, refund requested: bookingId={}, paymentId={}", bookingId, paymentId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isConfirmationAnnounced(Long bookingId) {
+        return bookingRepository.findById(bookingId).map(Booking::isConfirmationAnnounced).orElse(true);
+    }
+
+    /** Stores the meeting link and queues BOOKING_CONFIRMED exactly once. */
+    @Transactional
+    public void announceConfirmation(Long bookingId, String meetingUrl) {
+        Locked locked = lockBookingWithSlot(bookingId);
+        Booking booking = locked.booking();
+        boolean announceable = booking.getStatus() == BookingStatus.CONFIRMED
+                || booking.getStatus() == BookingStatus.COMPLETED;
+        if (booking.isConfirmationAnnounced() || !announceable) {
+            return;
+        }
+        booking.setMeetingUrl(meetingUrl);
+        booking.setConfirmationAnnounced(true);
+        outbox.bookingConfirmed(booking, meetingUrl);
     }
 
     // ---------- Hold expiry (called by HoldExpiryService) ----------
@@ -266,6 +297,7 @@ public class BookingService {
 
     private void closeAndRelease(Locked locked, BookingStatus terminalStatus, String reason) {
         locked.booking().closeAs(terminalStatus, reason);
+        outbox.bookingCancelled(locked.booking());
         if (locked.slot().getStatus() == SlotStatus.HELD) {
             locked.slot().release();
         }

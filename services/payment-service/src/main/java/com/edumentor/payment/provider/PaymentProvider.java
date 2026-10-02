@@ -19,4 +19,7 @@ public interface PaymentProvider {
 
     /** Asks the provider for the current state (never trusts the client). */
     ProviderOutcome fetchStatus(String providerPaymentId);
+
+    /** Refunds the full payment. Must be idempotent for the same idempotencyKey. */
+    void refund(String providerPaymentId, String idempotencyKey);
 }

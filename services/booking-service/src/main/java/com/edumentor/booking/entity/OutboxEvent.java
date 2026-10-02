@@ -1,4 +1,4 @@
-package com.edumentor.payment.entity;
+package com.edumentor.booking.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,6 +17,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 
+/** Written in the same transaction as the state change; the relay publishes PENDING rows to Kafka. */
 @Entity
 @Table(name = "outbox_events",
         uniqueConstraints = @UniqueConstraint(name = "uk_outbox_event_id", columnNames = "event_id"),
@@ -39,6 +40,9 @@ public class OutboxEvent {
     @Column(name = "aggregate_id", nullable = false, length = 50)
     private String aggregateId;
 
+    @Column(name = "message_key", length = 50)
+    private String messageKey;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false, length = 40)
     private OutboxEventType eventType;
@@ -52,10 +56,6 @@ public class OutboxEvent {
 
     @Column(name = "correlation_id", length = 64)
     private String correlationId;
-
-    /** Kafka message key (the booking id) so all events of one booking stay ordered. */
-    @Column(name = "message_key", length = 50)
-    private String messageKey;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

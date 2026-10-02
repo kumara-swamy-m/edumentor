@@ -86,6 +86,12 @@ public class Booking {
 
     @Column(name = "completed_at")
     private Instant completedAt;
+    /** True once BOOKING_CONFIRMED (with the meeting link) has been queued. Makes the saga step idempotent. */
+    @Column(name = "confirmation_announced", nullable = false)
+    private boolean confirmationAnnounced;
+
+    @Column(name = "reminder_sent", nullable = false)
+    private boolean reminderSent;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

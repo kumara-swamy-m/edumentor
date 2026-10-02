@@ -4,6 +4,7 @@ import com.edumentor.payment.entity.OutboxEvent;
 import com.edumentor.payment.entity.OutboxEventType;
 import com.edumentor.payment.entity.Payment;
 import com.edumentor.payment.event.PaymentFailedEvent;
+import com.edumentor.payment.event.PaymentRefundedEvent;
 import com.edumentor.payment.event.PaymentSuccessEvent;
 import com.edumentor.payment.repository.OutboxEventRepository;
 import com.edumentor.payment.web.CorrelationIdFilter;
@@ -43,12 +44,16 @@ public class OutboxService {
             case PAYMENT_FAILED -> new PaymentFailedEvent(eventId, type.name(), now, correlationId,
                     payment.getId(), payment.getBookingId(), payment.getStudentId(),
                     payment.getAmount(), payment.getCurrency(), reason);
+            case PAYMENT_REFUNDED -> new PaymentRefundedEvent(eventId, type.name(), now, correlationId,
+                    payment.getId(), payment.getBookingId(), payment.getStudentId(),
+                    payment.getAmount(), payment.getCurrency(), reason);
         };
 
         OutboxEvent event = new OutboxEvent();
         event.setEventId(eventId);
         event.setAggregateType("PAYMENT");
         event.setAggregateId(String.valueOf(payment.getId()));
+        event.setMessageKey(String.valueOf(payment.getBookingId()));
         event.setEventType(type);
         event.setCorrelationId(correlationId);
         try {

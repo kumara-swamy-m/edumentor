@@ -40,4 +40,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             + "order by b.holdExpiresAt asc")
     List<Long> findExpiredHoldIds(@Param("status") BookingStatus status, @Param("now") Instant now,
                                   Pageable pageable);
+
+    @Query("select b.id from Booking b where b.status = :status and b.reminderSent = false "
+            + "and b.sessionStart > :from and b.sessionStart <= :to order by b.sessionStart asc")
+    List<Long> findReminderCandidateIds(@Param("status") BookingStatus status, @Param("from") Instant from,
+                                        @Param("to") Instant to, Pageable pageable);
 }

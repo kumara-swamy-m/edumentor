@@ -149,6 +149,22 @@ public class StripePaymentProvider implements PaymentProvider {
             throw new ProviderException("Stripe status lookup failed", ex);
         }
     }
+    @Override
+    public void refund(String providerPaymentId, String idempotencyKey) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("payment_intent", providerPaymentId);
+        try {
+            restClient.post()
+                    .uri("/v1/refunds")
+                    .header("Idempotency-Key", idempotencyKey)
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException ex) {
+            throw new ProviderException("Stripe refund failed", ex);
+        }
+    }
 
     private ProviderEvent toEvent(String rawBody) {
         try {
