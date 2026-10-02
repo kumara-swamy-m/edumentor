@@ -11,6 +11,7 @@
     <name>edumentor</name>
 
     <modules>
+        <module>services/mentor-service</module>
         <module>services/service-registry</module>
         <module>services/api-gateway</module>
         <module>services/auth-service</module>
