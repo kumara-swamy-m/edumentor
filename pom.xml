@@ -11,6 +11,7 @@
     <name>edumentor</name>
 
     <modules>
+        <module>services/payment-service</module>
         <module>services/booking-service</module>
         <module>services/mentor-service</module>
         <module>services/service-registry</module>
