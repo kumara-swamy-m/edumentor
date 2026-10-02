@@ -187,6 +187,18 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("USER_NOT_FOUND"));
     }
+    @Test
+    void internalLookupRequiresTheApiKey() throws Exception {
+        User user = userRepository.save(User.builder().name("Asha").email("asha-int@example.com")
+                .passwordHash(passwordEncoder.encode(PASSWORD)).role(Role.STUDENT).enabled(true).build());
+        String url = "/api/auth/internal/users/" + user.getId();
+
+        mockMvc.perform(get(url)).andExpect(status().isForbidden());
+        mockMvc.perform(get(url).header("X-Internal-Api-Key", "wrong")).andExpect(status().isForbidden());
+        mockMvc.perform(get(url).header("X-Internal-Api-Key", "test-internal-api-key-123"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("asha-int@example.com"));
+    }
 
     // ---------- helpers ----------
 
