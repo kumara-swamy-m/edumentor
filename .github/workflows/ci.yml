@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - service-registry
+          - api-gateway
+          - auth-service
+          - mentor-service
+          - booking-service
+          - payment-service
+          - notification-service
+          - ai-service
+          - review-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Build and test
+        working-directory: services/${{ matrix.service }}
+        run: mvn -B -ntp clean verify
+
+  docker:
+    name: Docker ${{ matrix.service }}
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - service-registry
+          - api-gateway
+          - auth-service
+          - mentor-service
+          - booking-service
+          - payment-service
+          - notification-service
+          - ai-service
+          - review-service
+    env:
+      PUSH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lower-case the image owner
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        if: env.PUSH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build (and push on main)
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: ${{ env.PUSH == 'true' }}
+          tags: |
+            ghcr.io/${{ env.OWNER }}/edumentor-${{ matrix.service }}:latest
+            ghcr.io/${{ env.OWNER }}/edumentor-${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
