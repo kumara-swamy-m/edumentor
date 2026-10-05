@@ -55,6 +55,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         ROLE_RULES.put("/api/mentors/admin/**", "ADMIN");
         ROLE_RULES.put("/api/auth/internal/**", "NOBODY");
         ROLE_RULES.put("/api/payments/admin/**", "ADMIN");
+        ROLE_RULES.put("/api/ai/admin/**", "ADMIN");
+        ROLE_RULES.put("/api/ai/mentors/**", "ADMIN");
     }
 
     private record Identity(Long userId, String email, String role) {
