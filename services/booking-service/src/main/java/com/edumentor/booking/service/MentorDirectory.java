@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
-/** Thin domain wrapper around the mentor-service client. */
+/** Thin domain wrapper around the mentor-service client, with retry for transient outages. */
 @Component
 @RequiredArgsConstructor
 public class MentorDirectory {
@@ -18,10 +18,12 @@ public class MentorDirectory {
     }
 
     private final MentorClient mentorClient;
+    private final RemoteRetry remoteRetry;
 
     /** The caller's own mentor profile must exist, belong to them and be APPROVED. */
     public MentorIdentity requireApprovedOwnProfile(String authorization, Long expectedUserId) {
-        MentorOwnProfile profile = mentorClient.getOwnProfile(authorization, correlationId());
+        MentorOwnProfile profile = remoteRetry.call(
+                () -> mentorClient.getOwnProfile(authorization, correlationId()));
         if (profile == null) {
             throw ApiException.mentorServiceUnavailable();
         }
@@ -33,7 +35,8 @@ public class MentorDirectory {
 
     /** mentor-service answers 404 for mentors that are not approved. */
     public void requireApprovedMentor(Long mentorId, String authorization) {
-        MentorPublicProfile profile = mentorClient.getApprovedMentor(mentorId, authorization, correlationId());
+        MentorPublicProfile profile = remoteRetry.call(
+                () -> mentorClient.getApprovedMentor(mentorId, authorization, correlationId()));
         if (profile == null) {
             throw ApiException.mentorServiceUnavailable();
         }

@@ -19,11 +19,12 @@ public class BookingDirectory {
     private static final String PENDING_PAYMENT = "PENDING_PAYMENT";
 
     private final BookingClient bookingClient;
+    private final RemoteRetry remoteRetry;
     private final Clock clock;
 
     public BookingSummary requirePayable(Long bookingId, String authorization, Long studentId) {
-        BookingSummary booking = bookingClient.getBooking(bookingId, authorization,
-                MDC.get(CorrelationIdFilter.MDC_KEY));
+        BookingSummary booking = remoteRetry.call(() -> bookingClient.getBooking(bookingId, authorization,
+                MDC.get(CorrelationIdFilter.MDC_KEY)));
         if (booking == null || booking.price() == null || booking.currency() == null) {
             throw ApiException.bookingServiceUnavailable();
         }
